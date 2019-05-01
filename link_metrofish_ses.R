@@ -110,14 +110,13 @@ if(create_out_dir_param==TRUE){
 ## directory set earlier
 
 # all metropolitan zips for NOLA & TBSP
-metro_zips <- read.csv("data/metropolitan_LA_FL_ZCTAs.csv",header=TRUE)
+metro_zips <- read.csv(file.path(in_dir,metro_zips_filename),header=TRUE)
 
 # metro_zips <- data.frame(ZCTA5=metro_zips[,1])
 # fish landing zip data
-LA_MRIP <- read.csv("data/metro_ZipSiteLanding_LA.csv",header = TRUE)
-FL_MRIP <- read.csv("data/metro_ZipSiteLanding_FL.csv",header = TRUE)
-
-fish_dat <- read.csv("data/mrip_species_zip_site_2004_2017_012019.csv",header = TRUE)
+LA_MRIP <- read.csv(file.path(in_dir,LA_MRIP_filename),header = TRUE)
+FL_MRIP <- read.csv(file.path(in_dir,FL_MRIP_filename),header = TRUE)
+fish_dat <- read.csv(file.path(in_dir,fish_dat_filename),header = TRUE)
 
 #create landings quantiles. right now we're just breaking them into bottom , middle third and top third of landings for each metropolitan area
 

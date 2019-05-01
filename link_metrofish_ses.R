@@ -54,26 +54,25 @@ Sys.setenv(LANG = "en")
 
 
 #ARGS 1
-in_dir <- "/Users/zachkoehn/UW/FoodFishHappy/SESYNC.Grad/ScriptData/ForBenoit
-
+in_dir <- "/nfs/bparmentier-data/Data/projects/FishingandUrbanInequality-data/data"
 #ARGS 2
-infile_name_df <- "dat_reg2_var_list_NDVI_NDVI_Katrina_04102015.txt" #use this data to test filtering
-infile_name_raster <- "reg2_NDVI_katrina.tif"
+out_dir <- "/nfs/bparmentier-data/Data/projects/FishingandUrbanInequality-data/outputs"
 #ARGS 3
-#start_date <- "2004-01-01"
-start_date <- "2012-11-01"  #new data starts in November 2012
-#ARGS 4
-end_date <- NULL
-#ARGS 5
-out_dir <- "/nfs/bparmentier-data/Data/projects/managing_hurricanes/outputs"
+metro_zips <- read.csv("data/metropolitan_LA_FL_ZCTAs.csv",header=TRUE)
+
 #ARGS 6
 create_out_dir_param=TRUE #create a new ouput dir if TRUE
 #ARGS 7
-out_suffix <-"example_ts_04242019" #output suffix for the files and ouptut folder #param 12
+out_suffix <-"example_analyses_metrofish_04302019" #output suffix for the files and ouptut folder #param 12
 #ARGS 8
 num_cores <- 2 # number of cores
 
-#range_window <- c("2012-01-01","2017-01-01")
+# all metropolitan zips for NOLA & TBSP
+metro_zips_filename <- "metropolitan_LA_FL_ZCTAs.csv"
+# fish landing zip data
+LA_MRIP_filename <- "metro_ZipSiteLanding_LA.csv"
+FL_MRIP_filename <- "metro_ZipSiteLanding_FL.csv"
+fish_dat_filename <- "mrip_species_zip_site_2004_2017_012019.csv"
 
 ################# START SCRIPT ###############################
 
@@ -100,8 +99,6 @@ if(create_out_dir_param==TRUE){
 #set up the working directory
 #Create output directory
 
-
-
 ##################################################################
 ###
 ###        1
@@ -110,7 +107,7 @@ if(create_out_dir_param==TRUE){
 ###
 ##################################################################
 
-
+## directory set earlier
 
 # all metropolitan zips for NOLA & TBSP
 metro_zips <- read.csv("data/metropolitan_LA_FL_ZCTAs.csv",header=TRUE)

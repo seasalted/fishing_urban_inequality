@@ -73,6 +73,8 @@ metro_zips_filename <- "metropolitan_LA_FL_ZCTAs.csv"
 LA_MRIP_filename <- "metro_ZipSiteLanding_LA.csv"
 FL_MRIP_filename <- "metro_ZipSiteLanding_FL.csv"
 fish_dat_filename <- "mrip_species_zip_site_2004_2017_012019.csv"
+SheetNames <- excel_sheets("data/All_variables.xls")
+ses_dat_full <- read_excel("data/All_variables.xls" , sheet=SheetNames[1])
 
 ################# START SCRIPT ###############################
 
@@ -125,9 +127,15 @@ LA_MRIP <- LA_MRIP %>%
 	group_by(ZIP) %>% #groups everything by zip
 	summarise(LANDINGS_sum_2007to2011 = sum(landing,na.rm=TRUE) )  #sums all landing info across 2007 to 2011 
 
+#Before separating into quantitle
+
+plot(LA_MRIP$LANDINGS_sum_2007to2011,type="h")
+
 # separate into thirds
-LA_MRIP <- within(LA_MRIP, quantile <- as.integer(cut(LANDINGS_sum_2007to2011, quantile(LANDINGS_sum_2007to2011, probs=0:3/3), include.lowest=TRUE)))
-quantiles_LA <- quantile(LA_MRIP$LANDINGS_sum_2007to2011, probs=0:3/3)
+LA_MRIP <- within(LA_MRIP, 
+                  quantile <- as.integer(cut(LANDINGS_sum_2007to2011, 
+                                             quantile(LANDINGS_sum_2007to2011, probs=0:3/3), include.lowest=TRUE)))
+#quantiles_LA <- quantile(LA_MRIP$LANDINGS_sum_2007to2011, probs=0:3/3)
 
 
 FL_MRIP <- FL_MRIP %>%
@@ -135,13 +143,14 @@ FL_MRIP <- FL_MRIP %>%
 	group_by(ZIP) %>% #groups everything by zip
 	summarise(LANDINGS_sum_2007to2011 = sum(landing,na.rm=TRUE) )  #sums all landing info across 2007 to 2011 
 
+plot(FL_MRIP$LANDINGS_sum_2007to2011,type="h")
+
 FL_MRIP <- within(FL_MRIP, quantile <- as.integer(cut(LANDINGS_sum_2007to2011, quantile(LANDINGS_sum_2007to2011, probs=0:3/3), include.lowest=TRUE)))
 quantiles_FL <- quantile(FL_MRIP$LANDINGS_sum_2007to2011, probs=0:3/3)
 
 # collapse the landings quantiles back into the same dataset
 ZIP_MRIP <- rbind(LA_MRIP,FL_MRIP)
-
-
+head(ZIP_MRIP)
 
 # socioeconomic data extract from excel and bind into single data frame
 

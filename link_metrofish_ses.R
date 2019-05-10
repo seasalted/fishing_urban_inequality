@@ -7,7 +7,7 @@
 # Email: zkoehn@uw.edu
 # For: SESYNC Graduate Pursuit
 # Date started: 12/17/2018
-# Revised: 04/30/2019
+# Revised: 05/10/2019
 #===============================================================================
 
 #libraries and data
@@ -44,13 +44,13 @@ create_dir_fun <- function(outDir,out_suffix=NULL){
 #####  Parameters and argument set up ###########
 
 # set working directory
-setwd("/Users/zachkoehn/UW/FoodFishHappy/SESYNC.Grad/ScriptData/ForBenoit")
+#setwd("/Users/zachkoehn/UW/FoodFishHappy/SESYNC.Grad/ScriptData/ForBenoit")
 
 # i hate it does this... 
-options(stringsAsFactors=FALSE)
+#options(stringsAsFactors=FALSE)
 
 # Personal R is set to french/spanish depending on the day and I have no idea how to fix it other than run this
-Sys.setenv(LANG = "en")
+#Sys.setenv(LANG = "en")
 
 
 #ARGS 1
@@ -58,12 +58,9 @@ in_dir <- "/nfs/bparmentier-data/Data/projects/FishingandUrbanInequality-data/da
 #ARGS 2
 out_dir <- "/nfs/bparmentier-data/Data/projects/FishingandUrbanInequality-data/outputs"
 #ARGS 3
-metro_zips <- read.csv("data/metropolitan_LA_FL_ZCTAs.csv",header=TRUE)
-
-#ARGS 6
 create_out_dir_param=TRUE #create a new ouput dir if TRUE
 #ARGS 7
-out_suffix <-"example_analyses_metrofish_04302019" #output suffix for the files and ouptut folder #param 12
+out_suffix <-"example_analyses_metrofish_05102019" #output suffix for the files and ouptut folder #param 12
 #ARGS 8
 num_cores <- 2 # number of cores
 
@@ -73,12 +70,12 @@ metro_zips_filename <- "metropolitan_LA_FL_ZCTAs.csv"
 LA_MRIP_filename <- "metro_ZipSiteLanding_LA.csv"
 FL_MRIP_filename <- "metro_ZipSiteLanding_FL.csv"
 fish_dat_filename <- "mrip_species_zip_site_2004_2017_012019.csv"
-SheetNames <- excel_sheets("data/All_variables.xls")
-ses_dat_full <- read_excel("data/All_variables.xls" , sheet=SheetNames[1])
+SheetNames <- "All_variables.xls"
+ses_dat_full_filename <- "All_variables.xls" 
 
 ################# START SCRIPT ###############################
 
-######### PART 0: Set up the output dir ################
+######### PARTt6 0: Set up the output dir ################
 
 options(scipen=999)
 
@@ -137,7 +134,7 @@ LA_MRIP <- within(LA_MRIP,
                                              quantile(LANDINGS_sum_2007to2011, probs=0:3/3), include.lowest=TRUE)))
 #quantiles_LA <- quantile(LA_MRIP$LANDINGS_sum_2007to2011, probs=0:3/3)
 
-
+### Florida:
 FL_MRIP <- FL_MRIP %>%
 	filter(YEAR %in% 2007:2011) %>% #includes only years for which we have socioeconomic info
 	group_by(ZIP) %>% #groups everything by zip
@@ -155,9 +152,18 @@ head(ZIP_MRIP)
 # socioeconomic data extract from excel and bind into single data frame
 
 # Make first column of the data frame to bind all other csv tables into
-SheetNames <- excel_sheets("data/All_variables.xls")
-ses_dat_full <- read_excel("data/All_variables.xls" , sheet=SheetNames[1])
+#SheetNames <- excel_sheets("data/All_variables.xls")
+#ses_dat_full <- read_excel(file.path(in_dir,ses_dat_full_filename) , 
+#                           sheet=SheetNames[1])
+
+#SheetNames <- excel_sheets(file.path(in_dir,ses_dat_full_filename))
+#test <- read_excel(file.path(in_dir,ses_dat_full_filename) , sheet=SheetNames[1])
+
+#test$Id == ses_dat_full$Id
+
+ses_dat_full <- read_excel(file.path(in_dir,ses_dat_full_filename))#default reads the first shee
 ses_dat <- cbind(ses_dat_full[,2],ses_dat_full[,4:dim(ses_dat_full)[2]])
+SheetNames <- excel_sheets(file.path(in_dir,ses_dat_full_filename))
 
 # set names 
 names(ses_dat)[1] <- "Id2"
@@ -168,12 +174,11 @@ ses_dat_uncleaned <- ses_dat
 # loop through remainders
 for(i in 2:length(SheetNames)) {
 	
-	sheet_for_rbind <- read_excel("data/All_variables.xls" , sheet=SheetNames[i])
+	sheet_for_rbind <- read_excel(file.path(in_dir,ses_dat_full_filename), 
+	                              sheet=SheetNames[i])
 	sheet_for_rbind <- cbind(sheet_for_rbind[,2],sheet_for_rbind[,4:dim(sheet_for_rbind)[2]])
 	names(sheet_for_rbind)[1] <- "Id2"
-
 	ses_dat <- merge(ses_dat,sheet_for_rbind, by="Id2")
-
 }
 
 

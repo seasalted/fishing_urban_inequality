@@ -18,12 +18,14 @@ library(ppcor)
 library(corrplot)
 library(mctest)
 library(pastecs)
-library(MASS) #for ordinal logit
+library(MASS)
+library(mctest)
+library(pastecs)
+#library(MASS) #for ordinal logit
 library(nnet) #for multinomial logit
 library(effects) # for visualizing effects of logits
 library(brant) # for testing parallel regression assumption in ordinal logits
 library(car) #for analyzing results
-library(MASS)
 
 ###### Functions used in this script and sourced from other files
 
@@ -52,7 +54,6 @@ create_dir_fun <- function(outDir,out_suffix=NULL){
 # Personal R is set to french/spanish depending on the day and I have no idea how to fix it other than run this
 #Sys.setenv(LANG = "en")
 
-
 #ARGS 1
 in_dir <- "/nfs/bparmentier-data/Data/projects/FishingandUrbanInequality-data/data"
 #ARGS 2
@@ -60,7 +61,7 @@ out_dir <- "/nfs/bparmentier-data/Data/projects/FishingandUrbanInequality-data/o
 #ARGS 3
 create_out_dir_param=TRUE #create a new ouput dir if TRUE
 #ARGS 7
-out_suffix <-"example_analyses_metrofish_05102019" #output suffix for the files and ouptut folder #param 12
+out_suffix <-"example_analyses_metrofish_05152019" #output suffix for the files and ouptut folder #param 12
 #ARGS 8
 num_cores <- 2 # number of cores
 
@@ -70,7 +71,7 @@ metro_zips_filename <- "metropolitan_LA_FL_ZCTAs.csv"
 LA_MRIP_filename <- "metro_ZipSiteLanding_LA.csv"
 FL_MRIP_filename <- "metro_ZipSiteLanding_FL.csv"
 fish_dat_filename <- "mrip_species_zip_site_2004_2017_012019.csv"
-SheetNames <- "All_variables.xls"
+#SheetNames <- "All_variables.xls"
 ses_dat_full_filename <- "All_variables.xls" 
 
 ################# START SCRIPT ###############################
@@ -110,15 +111,18 @@ if(create_out_dir_param==TRUE){
 
 # all metropolitan zips for NOLA & TBSP
 metro_zips <- read.csv(file.path(in_dir,metro_zips_filename),header=TRUE)
-
 # metro_zips <- data.frame(ZCTA5=metro_zips[,1])
 # fish landing zip data
 LA_MRIP <- read.csv(file.path(in_dir,LA_MRIP_filename),header = TRUE)
 FL_MRIP <- read.csv(file.path(in_dir,FL_MRIP_filename),header = TRUE)
 fish_dat <- read.csv(file.path(in_dir,fish_dat_filename),header = TRUE)
 
-#create landings quantiles. right now we're just breaking them into bottom , middle third and top third of landings for each metropolitan area
+table(metro_zips$STATE) #two states
+#12  22 
+#136  80 
 
+#create landings quantiles. right now we're just breaking them into bottom , middle third 
+#and top third of landings for each metropolitan area
 LA_MRIP <- LA_MRIP %>%
 	filter(YEAR %in% 2007:2011) %>% #includes only years for which we have socioeconomic info
 	group_by(ZIP) %>% #groups everything by zip
@@ -131,7 +135,8 @@ plot(LA_MRIP$LANDINGS_sum_2007to2011,type="h")
 # separate into thirds
 LA_MRIP <- within(LA_MRIP, 
                   quantile <- as.integer(cut(LANDINGS_sum_2007to2011, 
-                                             quantile(LANDINGS_sum_2007to2011, probs=0:3/3), include.lowest=TRUE)))
+                                             quantile(LANDINGS_sum_2007to2011, probs=0:3/3), 
+                                             include.lowest=TRUE)))
 #quantiles_LA <- quantile(LA_MRIP$LANDINGS_sum_2007to2011, probs=0:3/3)
 
 ### Florida:
@@ -142,8 +147,11 @@ FL_MRIP <- FL_MRIP %>%
 
 plot(FL_MRIP$LANDINGS_sum_2007to2011,type="h")
 
-FL_MRIP <- within(FL_MRIP, quantile <- as.integer(cut(LANDINGS_sum_2007to2011, quantile(LANDINGS_sum_2007to2011, probs=0:3/3), include.lowest=TRUE)))
-quantiles_FL <- quantile(FL_MRIP$LANDINGS_sum_2007to2011, probs=0:3/3)
+FL_MRIP <- within(FL_MRIP, 
+                  quantile <- as.integer(cut(LANDINGS_sum_2007to2011, 
+                                             quantile(LANDINGS_sum_2007to2011, probs=0:3/3), 
+                                             include.lowest=TRUE)))
+#quantiles_FL <- quantile(FL_MRIP$LANDINGS_sum_2007to2011, probs=0:3/3)
 
 # collapse the landings quantiles back into the same dataset
 ZIP_MRIP <- rbind(LA_MRIP,FL_MRIP)
@@ -167,11 +175,27 @@ SheetNames <- excel_sheets(file.path(in_dir,ses_dat_full_filename))
 
 # set names 
 names(ses_dat)[1] <- "Id2"
-
 ses_dat_uncleaned <- ses_dat
 
-
 # loop through remainders
+#cleaner as function:
+process_variables <- function(SheetNames,data_variables){
+  
+  sheet_for_rbind <- read_excel(file.path(in_dir,ses_dat_full_filename), 
+                                sheet=SheetNames)
+  sheet_for_rbind <- cbind(sheet_for_rbind[,2],sheet_for_rbind[,4:dim(sheet_for_rbind)[2]])
+  names(sheet_for_rbind)[1] <- "Id2"
+  ses_dat <- merge(ses_dat,sheet_for_rbind, by="Id2")
+  return(ses_dat)
+}
+
+
+test <- lapply(SheetNames,
+               FUN= process_variables,
+               data_variables=file.path(in_dir,ses_dat_full_filename))
+
+View(test[[1]])
+
 for(i in 2:length(SheetNames)) {
 	
 	sheet_for_rbind <- read_excel(file.path(in_dir,ses_dat_full_filename), 
@@ -181,28 +205,27 @@ for(i in 2:length(SheetNames)) {
 	ses_dat <- merge(ses_dat,sheet_for_rbind, by="Id2")
 }
 
-
 #remove margin of error columns, as we currently do not have need for it
 ses_dat <- ses_dat[, -grep("Margin of Error", colnames(ses_dat))] 
 #remove duplicate columns for total household estimates, only need one
-ses_dat <- ses_dat[,-c(9,11,16)]
+ses_dat <- ses_dat[,-c(9,11,16)] #more general way of doing this
 colnames(ses_dat)[5] <- "Total_households"
 
 #check to see if ZCTA5 and ZIPs line up
 # intersect(metro_zips$ZCTA5,ZIP_MRIP$ZIP)
 # intersect(metro_zips$ZCTA5,ses_dat$Id2)
 
-# Merge the socioeconic information I pulled from socioeconomic datasets Sarita gave me (the loop) with only metro zips for the two areas
+# Merge the socioeconic information I pulled from socioeconomic datasets Sarita gave me (the loop) 
+#with only metro zips for the two areas
 metro_ses <- merge(metro_zips, ses_dat,all.x = TRUE, by.x = "ZCTA5",by.y = "Id2") 
-metro_landings <- merge(metro_zips,ZIP_MRIP,all.x=TRUE,by.x="ZCTA5",by.y="ZIP") #this merges dataframe with landings quantiles calculated above
-
+#this merges dataframe with landings quantiles calculated above
+metro_landings <- merge(metro_zips,ZIP_MRIP,all.x=TRUE,by.x="ZCTA5",by.y="ZIP") 
 # metro_landings$quantile <- as.factor(metro_landings$quantile) 
 
 intersect(metro_landings$ZCTA5,ses_dat$Id2) #check to see overlap
 
 # brings together zipcode landings quantiles and socioeconomic information for statistical analysis
 ses_metro_landings <- merge(metro_landings,metro_ses,all.y=TRUE,by=c("ZCTA5","STATE"))
-
 
 # Change from integer values to character values
 for(i in 1:dim(ses_metro_landings)[1]) {
@@ -266,12 +289,10 @@ cor_la = cor(fish_metro_dat[fish_metro_dat$state==22,5:12],use="na.or.complete")
 corrplot.mixed(cor_la, lower.col = "black", number.cex = .7) #cute correlation plot to visualize correlation matrix
 
 # income has higher correlation with a lot of variables, as does food stamp, 
-library(mctest)
+#library(mctest)
 # first figure out whether whole model has multicollinearity issues by implementing brant test (from mctest)
 omcdiag(fish_metro_dat[fish_metro_dat$state==12,5:12],fish_metro_dat[fish_metro_dat$state==12,]$median_income_dollars_hhlds) #column selected for y doesn't change outcome, just selected median income
 omcdiag(fish_metro_dat[fish_metro_dat$state==22,5:12],fish_metro_dat[fish_metro_dat$state==22,]$median_income_dollars_hhlds) #column selected for y doesn't change outcome, just selected median income
-
-
 
 # answer is yes, so second can we locate which variable contributes most to multicollinearity using this package
 #library(ppcor)
@@ -294,7 +315,7 @@ imcdiag(fish_metro_dat[fish_metro_dat$state==12,5:12],as.numeric(as.factor(fish_
 
 fl_cor_coefs <-round(cor(fish_metro_dat[fish_metro_dat$state==12,5:12],use="na.or.complete"),digits=2)
 fl_cor_coefs
-library(pastecs)
+#library(pastecs)
 write.csv(t(round(stat.desc(fish_metro_dat[fish_metro_dat$state==12,5:12]),digits=2)),"outputs/fl_summary_stats.csv")
 write.csv(t(round(stat.desc(fish_metro_dat[fish_metro_dat$state==22,5:12]),digits=2)),"outputs/la_summary_stats.csv")
 names(fish_metro_dat)
@@ -323,7 +344,6 @@ imcdiag(fish_metro_dat[fish_metro_dat$state==22,5:12],as.numeric(as.factor(fish_
 ### 
 ###
 ##################################################################
-
 
 
 library(MASS) #for ordinal logit

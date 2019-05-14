@@ -77,6 +77,18 @@ fish_dat_filename <- "mrip_species_zip_site_2004_2017_012019.csv"
 #SheetNames <- "All_variables.xls"
 ses_dat_full_filename <- "All_variables.xls" 
 
+var_names <- c(
+  "zcta","state","landings","landings_quantile",
+  "racial_minority_percent_pop",
+  "foreign_born_percent_pop",
+  "poverty_percent_famil",
+  "median_income_dollars_hhlds",
+  "education_HS_GED_percent_pop",
+  "no_vehicles_percent_hhlds",
+  "one_vehicle_percent_hhlds",
+  "food_stamp_percent_hhlds"
+)
+
 ################# START SCRIPT ###############################
 
 ######### PARTt6 0: Set up the output dir ################
@@ -217,25 +229,35 @@ metro_landings <- merge(metro_zips,ZIP_MRIP,all.x=TRUE,by.x="ZCTA5",by.y="ZIP")
 
 intersect(metro_landings$ZCTA5,ses_dat$Id2) #check to see overlap
 
+#### Select only zips, ctza with relevant socio-economic information?
 # brings together zipcode landings quantiles and socioeconomic information for statistical analysis
 ses_metro_landings <- merge(metro_landings,metro_ses,all.y=TRUE,by=c("ZCTA5","STATE"))
 
-# Change from integer values to character values
-for(i in 1:dim(ses_metro_landings)[1]) {
+dim(ses_metro_landings)
+
+# Change from integer values to character values: use recode from dplyr!!
+#https://dplyr.tidyverse.org/reference/recode.html
+
+for(i in 1:nrow(ses_metro_landings)) {
   if( is.na(ses_metro_landings$quantile[i])==TRUE) {ses_metro_landings$quantile[i] <- "NotMRIP"}
   if(ses_metro_landings$quantile[i]==1) {ses_metro_landings$quantile[i] <- "Low"}
   if(ses_metro_landings$quantile[i]==2) {ses_metro_landings$quantile[i] <- "Mod"}
   if(ses_metro_landings$quantile[i]==3) {ses_metro_landings$quantile[i] <- "High"}
   
 }
+
 #and realize that the state classification used to split datasets below isn't in the SES data
 # fortunately, zips for Louisiana are in the 7000 range while Florida is 3000, so can use a
-#  conditional to separate
+#  conditional to separate ---> keep the label. I suggest adding a variable!
+
 ses_metro_landings$STATE <- ifelse(ses_metro_landings$ZCTA5<60000,12,22) # but this doesn't work
 
-# bind together only relevant vectors of info
+# bind together only relevant vectors of info: use this instead
+selected_variables <- c("ZCTA5", "STATE") #, "LANDINGS", "QUANTILE")
+fish_metro_dat <- ses_metro_landings[,selected_variables]
+
 fish_metro_dat <- cbind(
-  ses_metro_landings[,1:4], # ZCTA5, STATE, LANDINGS, QUANTILE
+  ses_metro_landings[,1:4], # ZCTA5, STATE, LANDINGS, QUANTILE :use name!!!
   ses_metro_landings[,7], # pct racial minority
   ses_metro_landings[,9], # pct foreign born
   ses_metro_landings[,11], #pct families below poverty level
@@ -244,7 +266,12 @@ fish_metro_dat <- cbind(
   ses_metro_landings[,15:16], # pct no/1 vehicle
   ses_metro_landings[,18] # pct hhlds receiving food stamps
 )
+
+head(fish_metro_dat)
+
+
 # and name them somethign reasonably informative but short
+
 names(fish_metro_dat) <- c(
   "zcta","state","landings","landings_quantile",
   "racial_minority_percent_pop",
@@ -256,6 +283,8 @@ names(fish_metro_dat) <- c(
   "one_vehicle_percent_hhlds",
   "food_stamp_percent_hhlds"
 )
+
+
 # convert to numeric wherever needed
 fish_metro_dat$poverty_percent_famil <- as.numeric(fish_metro_dat$poverty_percent_famil)
 fish_metro_dat$median_income_dollars_hhlds <- as.numeric(fish_metro_dat$median_income_dollars_hhlds)
@@ -339,13 +368,11 @@ imcdiag(fish_metro_dat[fish_metro_dat$state==22,5:12],as.numeric(as.factor(fish_
 ##################################################################
 
 
-library(MASS) #for ordinal logit
-library(nnet) #for multinomial logit
-library(effects) # for visualizing effects of logits
-library(brant) # for testing parallel regression assumption in ordinal logits
-library(car) #for analyzing results
-
-library(MASS)
+#library(MASS) #for ordinal logit
+#library(nnet) #for multinomial logit
+#library(effects) # for visualizing effects of logits
+#ibrary(brant) # for testing parallel regression assumption in ordinal logits
+#library(car) #for analyzing results
 
 
 # first remove zip rows with NA
@@ -424,7 +451,6 @@ la_ordered_logit_noPov <-
     Hess = TRUE
   )
 summary(la_ordered_logit_noPov)
-
 
 
 fl_dat_noNotMRIP <- fl_dat[fl_dat$landings_quantile!="NotMRIP",]
@@ -752,7 +778,8 @@ Anova(fl_multinom_logit_noPov,type="III")
 Anova(fl_multinom_logit_noPovNoInc,type="III")
 
 summary(fl_multinom_logit_noPov)$coefficients
-library(effects)
+
+#library(effects)
 
 plot(allEffects(fl_multinom_logit_noPov))
 plot(allEffects(la_multinom_logit_noPov))
@@ -784,6 +811,7 @@ plot(effect("one_vehicle_percent_hhlds",fl_ordered_logit_NoPovNoInc))
 plot(effect("food_stamp_percent_hhlds",fl_ordered_logit_NoPovNoInc))
 dev.off()
 
+################## Figures generation, I suggest using function for clarity
 
 pdf("plots/diagnosticPlots/SES_diagnostics_plots.pdf")
 	i=3
@@ -1396,3 +1424,4 @@ legend(
 )
 dev.off()
 
+######################################### End of script ##############################################

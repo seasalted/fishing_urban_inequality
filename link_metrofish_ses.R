@@ -269,7 +269,6 @@ fish_metro_dat <- cbind(
 
 head(fish_metro_dat)
 
-
 # and name them somethign reasonably informative but short
 
 names(fish_metro_dat) <- c(
@@ -284,11 +283,14 @@ names(fish_metro_dat) <- c(
   "food_stamp_percent_hhlds"
 )
 
-
 # convert to numeric wherever needed
 fish_metro_dat$poverty_percent_famil <- as.numeric(fish_metro_dat$poverty_percent_famil)
 fish_metro_dat$median_income_dollars_hhlds <- as.numeric(fish_metro_dat$median_income_dollars_hhlds)
 
+### write out processed data
+out_file_processed_data <- paste0("fish_metro_dat","_",out_suffix,".csv")
+write.table(fish_metro_dat,
+            file.path(out_dir,out_file_processed_data))
 
 ##################################################################
 ###
@@ -298,7 +300,6 @@ fish_metro_dat$median_income_dollars_hhlds <- as.numeric(fish_metro_dat$median_i
 ### - Answer: at first glance, yes, but when each variable is analyzed not so much
 ###
 ##################################################################
-
 
 # so before running models, do we have to worry about collinearity between variables? 
 # uses https://datascienceplus.com/multicollinearity-in-r/ as a template
@@ -321,12 +322,15 @@ omcdiag(fish_metro_dat[fish_metro_dat$state==22,5:12],fish_metro_dat[fish_metro_
 
 # TAMPA-ST. PETES metro area
 fl_data_test <- fish_metro_dat[fish_metro_dat$state==12,5:12]
+
 fl_pcor_pvals <- pcor(fl_data_test[complete.cases(fl_data_test==TRUE),],method="pearson")$p.value
 fl_pcor_coefs <- round(pcor(fl_data_test[complete.cases(fl_data_test==TRUE),],method="pearson")$estimate,digits = 2)
 fl_pcor_coefs
+fl_pcor_pvals
 
 # calcluates variable inflation factor for each dataset
-imcdiag(fish_metro_dat[fish_metro_dat$state==12,5:12],as.numeric(as.factor(fish_metro_dat[fish_metro_dat$state==12,]$landings_quantile)))
+imcdiag(fish_metro_dat[fish_metro_dat$state==12,5:12],
+        as.numeric(as.factor(fish_metro_dat[fish_metro_dat$state==12,]$landings_quantile)))
 
 # fl_pcor_coefs>0.599
 # Tampa-St.Petes coefs >0.599 include 
@@ -337,10 +341,14 @@ imcdiag(fish_metro_dat[fish_metro_dat$state==12,5:12],as.numeric(as.factor(fish_
 
 fl_cor_coefs <-round(cor(fish_metro_dat[fish_metro_dat$state==12,5:12],use="na.or.complete"),digits=2)
 fl_cor_coefs
+
 #library(pastecs)
-write.csv(t(round(stat.desc(fish_metro_dat[fish_metro_dat$state==12,5:12]),digits=2)),"outputs/fl_summary_stats.csv")
-write.csv(t(round(stat.desc(fish_metro_dat[fish_metro_dat$state==22,5:12]),digits=2)),"outputs/la_summary_stats.csv")
+write.csv(t(round(stat.desc(fish_metro_dat[fish_metro_dat$state==12,5:12]),digits=2)),
+          file.path(out_dir,"fl_summary_stats.csv"))
+write.csv(t(round(stat.desc(fish_metro_dat[fish_metro_dat$state==22,5:12]),digits=2)),
+          file.path(out_dir,"la_summary_stats.csv"))
 names(fish_metro_dat)
+
 # NOLA metro area
 la_data_test <- fish_metro_dat[fish_metro_dat$state==22,5:12]
 la_pcor_pvals <- pcor(la_data_test[complete.cases(la_data_test==TRUE),],method="pearson")$p.value
@@ -356,7 +364,6 @@ imcdiag(fish_metro_dat[fish_metro_dat$state==22,5:12],as.numeric(as.factor(fish_
 
 # almost:
 # foreign_born_percent_pop & racial_minority_percent_pop is 0.58 (pval*** = 1.840686e-07)
-
 
 ##################################################################
 ###
@@ -388,8 +395,18 @@ la_dat <- la_dat[complete.cases(la_dat[,5:12])==TRUE,]
 fl_dat$median_income_dollars_hhlds_percent_scaled <- fl_dat$median_income_dollars_hhlds/max(fl_dat$median_income_dollars_hhlds)
 la_dat$median_income_dollars_hhlds_percent_scaled <- la_dat$median_income_dollars_hhlds/max(la_dat$median_income_dollars_hhlds)
 
-write.csv(fl_dat,"outputs/fl_updated_income.csv",row.names=FALSE)
-write.csv(la_dat,"outputs/la_updated_income.csv",row.names=FALSE)
+out_file_fl_data <- paste0("fl_updated_income","_",out_suffix,".csv")
+write.csv(fl_dat,
+          "fl_updated_income.csv",row.names=FALSE)
+out_file_la_data <- paste0("la_dat","_",out_suffix,".csv")
+write.csv(la_dat,
+          "outputs/la_updated_income.csv",row.names=FALSE)
+file.path(out_dir,out_file_processed_data)
+### write out processed data
+out_file_processed_data <- paste0("fish_metro_dat","_",out_suffix,".csv")
+write.table(fish_metro_dat,
+            file.path(out_dir,out_file_processed_data))
+
 
 #and order MRIP landings categories from 
 fl_dat$landings_quantile <- factor(
@@ -400,8 +417,6 @@ la_dat$landings_quantile <- factor(
 	la_dat$landings_quantile, 
 	levels = c("NotMRIP","Low","Mod","High")
 	)
-
-
 
 fl_ordered_logit_noPov <- 
   polr(
@@ -417,8 +432,10 @@ fl_ordered_logit_noPov <-
     data=fl_dat,
     Hess = TRUE
   )
+
 summary(fl_ordered_logit_noPov)
 brant(fl_ordered_logit_noPov)
+
 fl_ordered_logit_NoPovNoInc <- 
   polr(
     landings_quantile~
@@ -433,6 +450,7 @@ fl_ordered_logit_NoPovNoInc <-
     data=fl_dat,
     Hess = TRUE
   )
+
 summary(fl_ordered_logit_NoPovNoInc)
 brant(fl_ordered_logit_NoPovNoInc)
 
@@ -476,9 +494,8 @@ fl_ordered_logit_noPov_NoNotMRIP <-
     data=fl_dat_noNotMRIP,
     Hess = TRUE
   )
+
 brant(fl_ordered_logit_noPov_NoNotMRIP)
-
-
 
 
 la_dat_noNotMRIP <- la_dat[la_dat$landings_quantile!="NotMRIP",]
@@ -517,7 +534,6 @@ Anova(la_ordered_logit_noPov)
 # socioeconomic predictor varialbes are proportional across each category of landings
 
 
-
 # For Florida, null hypothesis that parallel regression assumption holds is shown to be false.
 brant(fl_ordered_logit_noPov)
 brant(fl_ordered_logit_NoPovNoInc)
@@ -528,7 +544,7 @@ brant(la_ordered_logit_noPov)
 # So we need to make a decision on wheter to use ordinal logit for Louisiana and multinomial logit (no porp. odds assumption required) OR
 # Shift both over to multinomial. 
 
-library(nnet)
+#library(nnet)
 
 # Tampa-St.Petes with multinomial logit
 fl_multinom_logit_noPov <- 
@@ -545,6 +561,7 @@ fl_multinom_logit_noPov <-
     data=fl_dat,
     Hess = TRUE
   )
+
 #converged... cool
 summary(fl_multinom_logit_noPov)
 Anova(fl_multinom_logit_noPov)
@@ -565,9 +582,9 @@ fl_multinom_logit_noPovNoInc <-
     data=fl_dat,
     Hess = TRUE
   )
+
 #converged... cool
 summary(fl_multinom_logit_noPovNoInc)
-
 
 # NOLA with multinomial logit
 la_multinom_logit_noPov <- 
@@ -610,7 +627,6 @@ la_multinom_logit_noPov_NoNotMRIP <-
 library(knitr);library(kableExtra);library(formattable);library(broom)
 
 
-
 model_AIC <- round(
   c(  
     AIC(
@@ -626,6 +642,9 @@ model_AIC <- round(
   ),
   digits=3
 )
+
+model_AIC
+
 model_df <- round(
   c(
     fl_ordered_logit_noPov$edf,
@@ -711,6 +730,8 @@ model_outputs <- data.frame(
 
 
 options(knitr.table.format = "html") 
+out_file <- file.path("model_performance.html")
+
 model_outputs %>%
   mutate(
     # model = row.names(.),
@@ -754,14 +775,11 @@ model_outputs %>%
   group_rows("New Orleans Metro Area Models", 4,5, label_row_css = "background-color: #666; color: #fff;") %>%
   group_rows("Tampa St. Pete's Metro Area Model without category for nonMRIP zips", 6,6, label_row_css = "background-color: #666; color: #fff;") %>%
   group_rows("New Orleans Metro Area Models without category for nonMRIP zips", 7,7, label_row_css = "background-color: #666; color: #fff;") %>%
-  save_kable(file = "outputs/tables/model_performance.html", self_contained = T)
+  save_kable(file = out_file, self_contained = T)
 
 
 
-
-
-
-library(car)
+#library(car)
 
 Anova(fl_ordered_logit_noPov)
 Anova(la_ordered_logit_noPov)

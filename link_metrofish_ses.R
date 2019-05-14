@@ -7,7 +7,7 @@
 # Email: zkoehn@uw.edu
 # For: SESYNC Graduate Pursuit
 # Date started: 12/17/2018
-# Revised: 05/10/2019
+# Revised: 05/14/2019
 #===============================================================================
 
 #libraries and data
@@ -42,15 +42,18 @@ create_dir_fun <- function(outDir,out_suffix=NULL){
   return(outDir)
 }
 
+#Benoit setup
+script_path <- "/nfs/bparmentier-data/Data/projects/FishingandUrbanInequality-data/scripts"
+crop_data_processing_functions <- "link_metrofish_ses_functions_05142019.R"
+source(file.path(script_path,crop_data_processing_functions))
+
 ############################################################################
 #####  Parameters and argument set up ###########
 
 # set working directory
 #setwd("/Users/zachkoehn/UW/FoodFishHappy/SESYNC.Grad/ScriptData/ForBenoit")
-
 # i hate it does this... 
 #options(stringsAsFactors=FALSE)
-
 # Personal R is set to french/spanish depending on the day and I have no idea how to fix it other than run this
 #Sys.setenv(LANG = "en")
 
@@ -179,16 +182,6 @@ ses_dat_uncleaned <- ses_dat
 
 # loop through remainders
 #cleaner as function:
-process_variables <- function(SheetNames,data_variables){
-  
-  sheet_for_rbind <- read_excel(file.path(in_dir,ses_dat_full_filename), 
-                                sheet=SheetNames)
-  sheet_for_rbind <- cbind(sheet_for_rbind[,2],sheet_for_rbind[,4:dim(sheet_for_rbind)[2]])
-  names(sheet_for_rbind)[1] <- "Id2"
-  ses_dat <- merge(ses_dat,sheet_for_rbind, by="Id2")
-  return(ses_dat)
-}
-
 
 test <- lapply(SheetNames,
                FUN= process_variables,

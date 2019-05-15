@@ -1,13 +1,47 @@
-
 #===============================================================================
 # Connecting MRIP metropolitan site landings with socioeconomic datasets
-# 
-# Name: J. Zachary (Zach) Koehn
+#  
+# Name: 
+# Created: J. Zachary (Zach) Koehn
+# Modified: Benoit Parmentier
 # Email: zkoehn@uw.edu
 # For: SESYNC Graduate Pursuit
 # Date started: 12/17/2018
-# Revised: 04/14/2019
+# Revised: 04/30/2019
 #===============================================================================
+
+#libraries and data
+library(tidyverse) #for data cleaning/plotting
+library(readxl) # for working with excel workbooks
+library(RColorBrewer) #for data viz
+library(ppcor)
+library(corrplot)
+library(mctest)
+library(pastecs)
+library(MASS) #for ordinal logit
+library(nnet) #for multinomial logit
+library(effects) # for visualizing effects of logits
+library(brant) # for testing parallel regression assumption in ordinal logits
+library(car) #for analyzing results
+library(MASS)
+
+###### Functions used in this script and sourced from other files
+
+create_dir_fun <- function(outDir,out_suffix=NULL){
+  #if out_suffix is not null then append out_suffix string
+  if(!is.null(out_suffix)){
+    out_name <- paste("output_",out_suffix,sep="")
+    outDir <- file.path(outDir,out_name)
+  }
+  #create if does not exists
+  if(!file.exists(outDir)){
+    dir.create(outDir)
+  }
+  return(outDir)
+}
+
+############################################################################
+#####  Parameters and argument set up ###########
 
 # set working directory
 setwd("/Users/zachkoehn/UW/FoodFishHappy/SESYNC.Grad/ScriptData/ForBenoit")
@@ -18,10 +52,54 @@ options(stringsAsFactors=FALSE)
 # Personal R is set to french/spanish depending on the day and I have no idea how to fix it other than run this
 Sys.setenv(LANG = "en")
 
-#libraries and data
-library(tidyverse) #for data cleaning/plotting
-library(readxl) # for working with excel workbooks
-library(RColorBrewer) #for data viz
+
+#ARGS 1
+in_dir <- "/Users/zachkoehn/UW/FoodFishHappy/SESYNC.Grad/ScriptData/ForBenoit
+
+#ARGS 2
+infile_name_df <- "dat_reg2_var_list_NDVI_NDVI_Katrina_04102015.txt" #use this data to test filtering
+infile_name_raster <- "reg2_NDVI_katrina.tif"
+#ARGS 3
+#start_date <- "2004-01-01"
+start_date <- "2012-11-01"  #new data starts in November 2012
+#ARGS 4
+end_date <- NULL
+#ARGS 5
+out_dir <- "/nfs/bparmentier-data/Data/projects/managing_hurricanes/outputs"
+#ARGS 6
+create_out_dir_param=TRUE #create a new ouput dir if TRUE
+#ARGS 7
+out_suffix <-"example_ts_04242019" #output suffix for the files and ouptut folder #param 12
+#ARGS 8
+num_cores <- 2 # number of cores
+
+#range_window <- c("2012-01-01","2017-01-01")
+
+################# START SCRIPT ###############################
+
+######### PART 0: Set up the output dir ################
+
+options(scipen=999)
+
+if(is.null(out_dir)){
+  out_dir <- in_dir #output will be created in the input dir
+  
+}
+#out_dir <- in_dir #output will be created in the input dir
+
+out_suffix_s <- out_suffix #xcan modify name of output suffix
+if(create_out_dir_param==TRUE){
+  out_dir <- create_dir_fun(out_dir,out_suffix)
+  setwd(out_dir)
+}else{
+  setwd(out_dir) #use previoulsy defined directory
+}
+
+#######################################
+### PART I READ AND PREPARE DATA #######
+#set up the working directory
+#Create output directory
+
 
 
 ##################################################################
@@ -169,7 +247,6 @@ fish_metro_dat$median_income_dollars_hhlds <- as.numeric(fish_metro_dat$median_i
 
 # so before running models, do we have to worry about collinearity between variables? 
 # uses https://datascienceplus.com/multicollinearity-in-r/ as a template
-library(corrplot)
 cor_fl = cor(fish_metro_dat[fish_metro_dat$state==12,5:12],use="na.or.complete")
 
 corrplot.mixed(cor_fl, lower.col = "black", number.cex = .7) #cute correlation plot to visualize correlation matrix
@@ -187,7 +264,7 @@ omcdiag(fish_metro_dat[fish_metro_dat$state==22,5:12],fish_metro_dat[fish_metro_
 
 
 # answer is yes, so second can we locate which variable contributes most to multicollinearity using this package
-library(ppcor)
+#library(ppcor)
 
 # TAMPA-ST. PETES metro area
 fl_data_test <- fish_metro_dat[fish_metro_dat$state==12,5:12]

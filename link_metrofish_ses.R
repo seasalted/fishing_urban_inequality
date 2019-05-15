@@ -316,7 +316,6 @@ corrplot.mixed(cor_la, lower.col = "black", number.cex = .7) #cute correlation p
 # first figure out whether whole model has multicollinearity issues by implementing brant test (from mctest)
 omcdiag(fish_metro_dat[fish_metro_dat$state==12,5:12],fish_metro_dat[fish_metro_dat$state==12,]$median_income_dollars_hhlds) #column selected for y doesn't change outcome, just selected median income
 omcdiag(fish_metro_dat[fish_metro_dat$state==22,5:12],fish_metro_dat[fish_metro_dat$state==22,]$median_income_dollars_hhlds) #column selected for y doesn't change outcome, just selected median income
-
 # answer is yes, so second can we locate which variable contributes most to multicollinearity using this package
 #library(ppcor)
 
@@ -407,7 +406,6 @@ out_file_processed_data <- paste0("fish_metro_dat","_",out_suffix,".csv")
 write.table(fish_metro_dat,
             file.path(out_dir,out_file_processed_data))
 
-
 #and order MRIP landings categories from 
 fl_dat$landings_quantile <- factor(
 	fl_dat$landings_quantile, 
@@ -497,7 +495,6 @@ fl_ordered_logit_noPov_NoNotMRIP <-
 
 brant(fl_ordered_logit_noPov_NoNotMRIP)
 
-
 la_dat_noNotMRIP <- la_dat[la_dat$landings_quantile!="NotMRIP",]
 la_dat_noNotMRIP
 la_dat_noNotMRIP$landings_quantile
@@ -525,14 +522,12 @@ brant(la_ordered_logit_noPov_NoNotMRIP)
 Anova(la_ordered_logit_noPov_NoNotMRIP)
 Anova(la_ordered_logit_noPov)
 
-
 # testing for the proportional odds assumption using a Brant test
 # a nonsignificant omnibus (aka across the whole model) would show that the effect
 # of the response (landings) is constant across separate model fits 
 # to each category - and coefficients should be the same for each logistic regression
 # this significes that the influence of 
 # socioeconomic predictor varialbes are proportional across each category of landings
-
 
 # For Florida, null hypothesis that parallel regression assumption holds is shown to be false.
 brant(fl_ordered_logit_noPov)

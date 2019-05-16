@@ -7,10 +7,9 @@
 # Email: zkoehn@uw.edu
 # For: SESYNC Graduate Pursuit
 # Date started: 12/17/2018
-# Revised: 05/14/2019
+# Revised: 05/16/2019
 #===============================================================================
 
-# slight change
 
 #libraries and data
 library(tidyverse) #for data cleaning/plotting
@@ -28,6 +27,7 @@ library(nnet) #for multinomial logit
 library(effects) # for visualizing effects of logits
 library(brant) # for testing parallel regression assumption in ordinal logits
 library(car) #for analyzing results
+library(stargazer) # for viewing tables
 
 ###### Functions used in this script and sourced from other files
 
@@ -44,10 +44,27 @@ create_dir_fun <- function(outDir,out_suffix=NULL){
   return(outDir)
 }
 
-#Benoit setup
-script_path <- "/nfs/bparmentier-data/Data/projects/FishingandUrbanInequality-data/scripts"
-crop_data_processing_functions <- "link_metrofish_ses_functions_05142019.R"
-source(file.path(script_path,crop_data_processing_functions))
+# #Benoit setup and filepaths
+# script_path <- "/nfs/bparmentier-data/Data/projects/FishingandUrbanInequality-data/scripts"
+# #ARGS 1
+# in_dir <- "/nfs/bparmentier-data/Data/projects/FishingandUrbanInequality-data/data"
+# #ARGS 2
+# out_dir <- "/nfs/bparmentier-data/Data/projects/FishingandUrbanInequality-data/outputs"
+
+# crop_data_processing_functions <- "link_metrofish_ses_functions_05142019.R"
+# source(file.path(script_path,crop_data_processing_functions))
+
+
+
+#Zach setup and filepaths
+script_path <- "/Users/zachkoehn/UW/FoodFishHappy/SESYNC.Grad/scriptdata/scripts"
+#ARGS 1
+in_dir_metro_zips <- "/Users/zachkoehn/UW/FoodFishHappy/SESYNC.Grad/scriptdata/data/metro_data"
+in_dir_metro_landings <- "/Users/zachkoehn/UW/FoodFishHappy/SESYNC.Grad/scriptdata/data/metro_ZipSiteLanding"
+in_dir_metro <- "/Users/zachkoehn/UW/FoodFishHappy/SESYNC.Grad/scriptdata/data/"
+#ARGS 2
+out_dir <- "/Users/zachkoehn/UW/FoodFishHappy/SESYNC.Grad/scriptdata/outputs"
+
 
 ############################################################################
 #####  Parameters and argument set up ###########
@@ -59,10 +76,8 @@ source(file.path(script_path,crop_data_processing_functions))
 # Personal R is set to french/spanish depending on the day and I have no idea how to fix it other than run this
 #Sys.setenv(LANG = "en")
 
-#ARGS 1
-in_dir <- "/nfs/bparmentier-data/Data/projects/FishingandUrbanInequality-data/data"
-#ARGS 2
-out_dir <- "/nfs/bparmentier-data/Data/projects/FishingandUrbanInequality-data/outputs"
+
+
 #ARGS 3
 create_out_dir_param=TRUE #create a new ouput dir if TRUE
 #ARGS 7
@@ -127,11 +142,11 @@ if(create_out_dir_param==TRUE){
 ## directory set earlier
 
 # all metropolitan zips for NOLA & TBSP
-metro_zips <- read.csv(file.path(in_dir,metro_zips_filename),header=TRUE)
+metro_zips <- read.csv(file.path(in_dir_metro_zips,metro_zips_filename),header=TRUE)
 # metro_zips <- data.frame(ZCTA5=metro_zips[,1])
 # fish landing zip data
-LA_MRIP <- read.csv(file.path(in_dir,LA_MRIP_filename),header = TRUE)
-FL_MRIP <- read.csv(file.path(in_dir,FL_MRIP_filename),header = TRUE)
+LA_MRIP <- read.csv(file.path(in_dir_metro_landings,LA_MRIP_filename),header = TRUE)
+FL_MRIP <- read.csv(file.path(in_dir_metro_landings,FL_MRIP_filename),header = TRUE)
 fish_dat <- read.csv(file.path(in_dir,fish_dat_filename),header = TRUE)
 
 table(metro_zips$STATE) #two states
@@ -186,37 +201,57 @@ head(ZIP_MRIP)
 
 #test$Id == ses_dat_full$Id
 
-ses_dat_full <- read_excel(file.path(in_dir,ses_dat_full_filename))#default reads the first shee
+SheetNames <- excel_sheets(file.path(in_dir_metro_zips,ses_dat_full_filename))
+ses_dat_full <- read_excel(file.path(in_dir_metro_zips,ses_dat_full_filename),sheet=SheetNames[1])#default reads the first shee
 ses_dat <- cbind(ses_dat_full[,2],ses_dat_full[,4:dim(ses_dat_full)[2]])
-SheetNames <- excel_sheets(file.path(in_dir,ses_dat_full_filename))
 
 # set names 
 names(ses_dat)[1] <- "Id2"
 ses_dat_uncleaned <- ses_dat
 
 # loop through remainders
-#cleaner as function:
 
-test <- lapply(SheetNames,
-               FUN= process_variables,
-               data_variables=file.path(in_dir,ses_dat_full_filename))
 
-View(test[[1]])
-
+# loop through remainders to fill in the dataframe with contents extracted from each sheet
 for(i in 2:length(SheetNames)) {
-	
-	sheet_for_rbind <- read_excel(file.path(in_dir,ses_dat_full_filename), 
-	                              sheet=SheetNames[i])
-	sheet_for_rbind <- cbind(sheet_for_rbind[,2],sheet_for_rbind[,4:dim(sheet_for_rbind)[2]])
-	names(sheet_for_rbind)[1] <- "Id2"
-	ses_dat <- merge(ses_dat,sheet_for_rbind, by="Id2")
+  
+  sheet_for_rbind <- read_excel( file.path(in_dir_metro_zips,ses_dat_full_filename) , sheet=SheetNames[i])
+  sheet_for_rbind <- cbind(sheet_for_rbind[,2],sheet_for_rbind[,4:dim(sheet_for_rbind)[2]])
+  names(sheet_for_rbind)[1] <- "Id2"
+
+  ses_dat <- merge(ses_dat,sheet_for_rbind, by="Id2")
+
 }
+
 
 #remove margin of error columns, as we currently do not have need for it
 ses_dat <- ses_dat[, -grep("Margin of Error", colnames(ses_dat))] 
 #remove duplicate columns for total household estimates, only need one
 ses_dat <- ses_dat[,-c(9,11,16)] #more general way of doing this
 colnames(ses_dat)[5] <- "Total_households"
+
+
+#cleaner as function:
+
+
+# commenting out this lapply version of processing excel workbook into useable dataframe b/c I can't get it to work correctly and using the for loop above 
+# test <- lapply(SheetNames,
+#                FUN= process_variables,
+#                data_variables=file.path(in_dir_metro_zips,ses_dat_full_filename))
+
+# View(test[[1]])
+
+# for(i in 2:length(SheetNames)) {
+	
+# 	sheet_for_rbind <- read_excel(file.path(in_dir,ses_dat_full_filename), 
+# 	                              sheet=SheetNames[i])
+# 	sheet_for_rbind <- cbind(sheet_for_rbind[,2],sheet_for_rbind[,4:dim(sheet_for_rbind)[2]])
+# 	names(sheet_for_rbind)[1] <- "Id2"
+# 	ses_dat <- merge(ses_dat,sheet_for_rbind, by="Id2")
+# }
+
+
+
 
 #check to see if ZCTA5 and ZIPs line up
 # intersect(metro_zips$ZCTA5,ZIP_MRIP$ZIP)
@@ -418,9 +453,45 @@ la_dat$landings_quantile <- factor(
 	levels = c("NotMRIP","Low","Mod","High")
 	)
 
+
+model_call <- c(
+  "landings_quantile ~
+    racial_minority_percent_pop",
+  "landings_quantile ~
+    foreign_born_percent_pop",
+  "landings_quantile ~
+    median_income_dollars_hhlds_percent_scaled",
+  "landings_quantile ~
+    education_HS_GED_percent_pop",
+  "landings_quantile ~
+    no_vehicles_percent_hhlds",
+  "landings_quantile ~
+    one_vehicle_percent_hhlds",
+  "landings_quantile ~
+    food_stamp_percent_hhlds",
+  "landings_quantile ~
+      racial_minority_percent_pop +
+      foreign_born_percent_pop +
+      median_income_dollars_hhlds_percent_scaled +  
+      education_HS_GED_percent_pop +
+      no_vehicles_percent_hhlds +
+      one_vehicle_percent_hhlds +
+      food_stamp_percent_hhlds"
+)
+
+polr_model_objs_function <- function(model_call,data) {
+  model_object <- polr(model_call,data=data, Hess = TRUE)
+  return(model_object)
+}
+
+fl_ordinal_logit_model_objects <- lapply(model_call, function(x) polr_model_objs_function(x,data=fl_dat) )
+
+as.vector(lapply(fl_ordinal_logit_model_objects,function(x) AIC(x)))
+
+
 fl_ordered_logit_noPov <- 
   polr(
-    landings_quantile~
+    landings_quantile ~
       racial_minority_percent_pop +
       foreign_born_percent_pop +
       # poverty_percent_famil +

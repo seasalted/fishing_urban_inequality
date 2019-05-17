@@ -13,7 +13,7 @@
 
 #libraries and data
 library(tidyverse) #for data cleaning/plotting
-library(readxl) # for working with excel workbooks
+library(readxl);library(openxlsx) # for working with (and writing) excel workbooks
 library(RColorBrewer) #for data viz
 library(ppcor)
 library(corrplot)
@@ -81,7 +81,7 @@ out_dir <- "/Users/zachkoehn/UW/FoodFishHappy/SESYNC.Grad/scriptdata/outputs"
 #ARGS 3
 create_out_dir_param=TRUE #create a new ouput dir if TRUE
 #ARGS 7
-out_suffix <-"example_analyses_metrofish_05152019" #output suffix for the files and ouptut folder #param 12
+out_suffix <-"example_analyses_metrofish_05172019" #output suffix for the files and ouptut folder #param 12
 #ARGS 8
 num_cores <- 2 # number of cores
 
@@ -516,18 +516,28 @@ multinom_model_objs_function <- function(model_call,data) {
   return(model_object)
 }
 
+multinom_return_pvalue_function <- function(model_object) {
+  z <- summary(model_object)$coefficients/summary(model_object)$standard.errors
+  # 2-tailed Wald z tests to test significance of coefficients
+  p <- (1 - pnorm(abs(z), 0, 1)) * 2
+  return(p)
+}
+
+
+multinom_return_coefs_function <- function(model_object) {
+  coefs <- summary(model_object)$coefficients
+  return(coefs)
+}
 
 # Tampa Bay St. Pete's models
 fl_multinom_logit_model_objects <- lapply(model_call, function(x) multinom_model_objs_function(x,data=fl_dat) )
 
-lapply(fl_multinom_logit_model_objects,function(x) summary(x))
-unlist(lapply(fl_multinom_logit_model_objects,function(x) AIC(x)))
 
-# Now New Orleans models
+#  New Orleans models
 la_multinom_logit_model_objects <- lapply(model_call, function(x) multinom_model_objs_function(x,data=la_dat) )
 
-lapply(la_multinom_logit_model_objects,function(x) summary(x))
-lapply(la_multinom_logit_model_objects,function(x) x$edf)
+
+
 
 # create nice model selection summary tables in r
 # useful guide from Hao Zhu here https://haozhu233.github.io/kableExtra/awesome_table_in_html.html
@@ -578,6 +588,39 @@ model_call <-
   )
 )
 
+
+
+odds_ratios_florida <- lapply(fl_multinom_logit_model_objects, function(x) exp( coef(x) ) )
+odds_ratios_louisiana <- lapply(la_multinom_logit_model_objects, function(x) exp( coef(x) ) ) 
+
+coefs_florida <- lapply(fl_multinom_logit_model_objects, function(x) coef(x) ) 
+coefs_louisiana <- lapply(la_multinom_logit_model_objects, function(x) coef(x) ) 
+
+
+pvalue_louisiana <- lapply(la_multinom_logit_model_objects,function(x) multinom_return_pvalue_function(x) )
+pvalue_florida <- lapply(fl_multinom_logit_model_objects,function(x) multinom_return_pvalue_function(x) )
+
+
+# write csvs for multivariate model outputs
+write.csv( t(as.data.frame(coefs_florida[8])), file=file.path(out_dir,"FL_multivariate_model_outputs_coefs.csv"), row.names=TRUE)
+write.csv( t(as.data.frame(pvalue_florida[8])), file=file.path(out_dir,"FL_multivariate_model_outputs_pvals.csv"), row.names=TRUE)
+write.csv( t(as.data.frame(odds_ratios_florida[8])), file=file.path(out_dir,"FL_multivariate_model_outputs_oddsratios.csv"), row.names=TRUE)
+
+write.csv( t(as.data.frame(coefs_louisiana[8])), file=file.path(out_dir,"LA_multivariate_model_outputs_coefs.csv"), row.names=TRUE)
+write.csv( t(as.data.frame(pvalue_louisiana[8])), file=file.path(out_dir,"LA_multivariate_model_outputs_pvals.csv"), row.names=TRUE)
+write.csv( t(as.data.frame(odds_ratios_louisiana[8])), file=file.path(out_dir,"LA_multivariate_model_outputs_oddsratios.csv"), row.names=TRUE)
+
+
+
+#now write csvs for bivariate model outputs
+
+write.csv( t(as.data.frame(coefs_florida[1:7])), file=file.path(out_dir,"FL_bivariate_model_outputs_coefs.csv"), row.names=TRUE)
+write.csv( t(as.data.frame(pvalue_florida[1:7])), file=file.path(out_dir,"FL_bivariate_model_outputs_pvals.csv"), row.names=TRUE)
+write.csv( t(as.data.frame(odds_ratios_florida[1:7])), file=file.path(out_dir,"FL_bivariate_model_outputs_oddsratios.csv"), row.names=TRUE)
+
+write.csv( t(as.data.frame(coefs_louisiana[1:7])), file=file.path(out_dir,"LA_bivariate_model_outputs_coefs.csv"), row.names=TRUE)
+write.csv( t(as.data.frame(pvalue_louisiana[1:7])), file=file.path(out_dir,"LA_bivariate_model_outputs_pvals.csv"), row.names=TRUE)
+write.csv( t(as.data.frame(odds_ratios_louisiana[1:7])), file=file.path(out_dir,"LA_bivariate_model_outputs_oddsratios.csv"), row.names=TRUE)
 
 
 
@@ -638,25 +681,6 @@ model_outputs %>%
   group_rows("New Orleans Metro Area Models without category for nonMRIP zips", 7,7, label_row_css = "background-color: #666; color: #fff;") %>%
   save_kable(file = out_file, self_contained = T)
 
-
-
-#library(car)
-
-Anova(fl_ordered_logit_noPov)
-Anova(la_ordered_logit_noPov)
-
-Anova(fl_multinom_logit_noPov)
-Anova(fl_multinom_logit_noPovNoInc,type="III")
-
-Anova(la_multinom_logit_noPov,type="III")
-
-broom::tidy(fl_multinom_logit_noPov)
-broom::tidy(fl_multinom_logit_noPovNoInc)
-
-Anova(fl_multinom_logit_noPov,type="III")
-Anova(fl_multinom_logit_noPovNoInc,type="III")
-
-summary(fl_multinom_logit_noPov)$coefficients
 
 #library(effects)
 

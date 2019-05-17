@@ -455,20 +455,13 @@ la_dat$landings_quantile <- factor(
 
 
 model_call <- c(
-  "landings_quantile ~
-    racial_minority_percent_pop",
-  "landings_quantile ~
-    foreign_born_percent_pop",
-  "landings_quantile ~
-    median_income_dollars_hhlds_percent_scaled",
-  "landings_quantile ~
-    education_HS_GED_percent_pop",
-  "landings_quantile ~
-    no_vehicles_percent_hhlds",
-  "landings_quantile ~
-    one_vehicle_percent_hhlds",
-  "landings_quantile ~
-    food_stamp_percent_hhlds",
+  "landings_quantile ~ racial_minority_percent_pop",
+  "landings_quantile ~ foreign_born_percent_pop",
+  "landings_quantile ~ median_income_dollars_hhlds_percent_scaled",
+  "landings_quantile ~ education_HS_GED_percent_pop",
+  "landings_quantile ~ no_vehicles_percent_hhlds",
+  "landings_quantile ~ one_vehicle_percent_hhlds",
+  "landings_quantile ~ food_stamp_percent_hhlds",
   "landings_quantile ~
       racial_minority_percent_pop +
       foreign_born_percent_pop +
@@ -477,6 +470,7 @@ model_call <- c(
       no_vehicles_percent_hhlds +
       one_vehicle_percent_hhlds +
       food_stamp_percent_hhlds"
+
 )
 
 polr_model_objs_function <- function(model_call,data) {
@@ -484,116 +478,18 @@ polr_model_objs_function <- function(model_call,data) {
   return(model_object)
 }
 
+# Tampa Bay St. Pete's models
 fl_ordinal_logit_model_objects <- lapply(model_call, function(x) polr_model_objs_function(x,data=fl_dat) )
 
+as.vector(lapply(fl_ordinal_logit_model_objects,function(x) summary(x)))
 as.vector(lapply(fl_ordinal_logit_model_objects,function(x) AIC(x)))
 
+# Now New Orleans models
+la_ordinal_logit_model_objects <- lapply(model_call, function(x) polr_model_objs_function(x,data=la_dat) )
 
-fl_ordered_logit_noPov <- 
-  polr(
-    landings_quantile ~
-      racial_minority_percent_pop +
-      foreign_born_percent_pop +
-      # poverty_percent_famil +
-      median_income_dollars_hhlds_percent_scaled +  
-      education_HS_GED_percent_pop +
-      no_vehicles_percent_hhlds +
-      one_vehicle_percent_hhlds +
-      food_stamp_percent_hhlds,
-    data=fl_dat,
-    Hess = TRUE
-  )
+as.vector(lapply(la_ordinal_logit_model_objects,function(x) summary(x)))
+as.vector(lapply(la_ordinal_logit_model_objects,function(x) AIC(x)))
 
-summary(fl_ordered_logit_noPov)
-brant(fl_ordered_logit_noPov)
-
-fl_ordered_logit_NoPovNoInc <- 
-  polr(
-    landings_quantile~
-      racial_minority_percent_pop +
-      foreign_born_percent_pop +
-      # poverty_percent_famil +
-      # median_income_dollars_hhlds_percent_scaled +  
-      education_HS_GED_percent_pop +
-      no_vehicles_percent_hhlds +
-      one_vehicle_percent_hhlds +
-      food_stamp_percent_hhlds,
-    data=fl_dat,
-    Hess = TRUE
-  )
-
-summary(fl_ordered_logit_NoPovNoInc)
-brant(fl_ordered_logit_NoPovNoInc)
-
-la_ordered_logit_noPov <- 
-  polr(
-    landings_quantile~
-      racial_minority_percent_pop +
-      foreign_born_percent_pop +
-      # poverty_percent_famil +
-      median_income_dollars_hhlds_percent_scaled +  
-      education_HS_GED_percent_pop +
-      no_vehicles_percent_hhlds +
-      one_vehicle_percent_hhlds +
-      food_stamp_percent_hhlds,
-    data=la_dat,
-    Hess = TRUE
-  )
-summary(la_ordered_logit_noPov)
-
-
-fl_dat_noNotMRIP <- fl_dat[fl_dat$landings_quantile!="NotMRIP",]
-fl_dat_noNotMRIP
-fl_dat_noNotMRIP$landings_quantile
-
-fl_dat_noNotMRIP$landings_quantile <- factor(
-  fl_dat_noNotMRIP$landings_quantile, 
-  levels = c("Low","Mod","High")
-)
-
-fl_ordered_logit_noPov_NoNotMRIP <- 
-  polr(
-    landings_quantile~
-      racial_minority_percent_pop +
-      foreign_born_percent_pop +
-      # poverty_percent_famil +
-      median_income_dollars_hhlds_percent_scaled +  
-      education_HS_GED_percent_pop +
-      no_vehicles_percent_hhlds +
-      one_vehicle_percent_hhlds +
-      food_stamp_percent_hhlds,
-    data=fl_dat_noNotMRIP,
-    Hess = TRUE
-  )
-
-brant(fl_ordered_logit_noPov_NoNotMRIP)
-
-la_dat_noNotMRIP <- la_dat[la_dat$landings_quantile!="NotMRIP",]
-la_dat_noNotMRIP
-la_dat_noNotMRIP$landings_quantile
-
-la_dat_noNotMRIP$landings_quantile <- factor(
-  la_dat_noNotMRIP$landings_quantile, 
-  levels = c("Low","Mod","High")
-)
-
-la_ordered_logit_noPov_NoNotMRIP <- 
-  polr(
-    landings_quantile~
-      racial_minority_percent_pop +
-      foreign_born_percent_pop +
-      # poverty_percent_famil +
-      median_income_dollars_hhlds_percent_scaled +  
-      education_HS_GED_percent_pop +
-      no_vehicles_percent_hhlds +
-      one_vehicle_percent_hhlds +
-      food_stamp_percent_hhlds,
-    data=la_dat_noNotMRIP,
-    Hess = TRUE
-  )
-brant(la_ordered_logit_noPov_NoNotMRIP)
-Anova(la_ordered_logit_noPov_NoNotMRIP)
-Anova(la_ordered_logit_noPov)
 
 # testing for the proportional odds assumption using a Brant test
 # a nonsignificant omnibus (aka across the whole model) would show that the effect
@@ -602,111 +498,50 @@ Anova(la_ordered_logit_noPov)
 # this significes that the influence of 
 # socioeconomic predictor varialbes are proportional across each category of landings
 
-# For Florida, null hypothesis that parallel regression assumption holds is shown to be false.
-brant(fl_ordered_logit_noPov)
-brant(fl_ordered_logit_NoPovNoInc)
+# For Florida, null hypothesis that parallel regression assumption 
+ # is shown to be false for the multivariate model
+as.vector(lapply(fl_ordinal_logit_model_objects,function(x) brant(x)))
 
-# For Louisiana, the null hypothesis DOES hold
-brant(la_ordered_logit_noPov)
+# For Louisiana, the null hypothesis DOES hold for the multivariate model
+as.vector(lapply(la_ordinal_logit_model_objects,function(x) brant(x)))
 
-# So we need to make a decision on wheter to use ordinal logit for Louisiana and multinomial logit (no porp. odds assumption required) OR
-# Shift both over to multinomial. 
-
+# Given this, and that the NotMRIP category is definitely not "rank ordered", we are
+# using a multinomial logit over the ordinal 
 #library(nnet)
 
-# Tampa-St.Petes with multinomial logit
-fl_multinom_logit_noPov <- 
-  multinom(
-    landings_quantile~
-      racial_minority_percent_pop +
-      foreign_born_percent_pop +
-      # poverty_percent_famil +
-      median_income_dollars_hhlds_percent_scaled +  
-      education_HS_GED_percent_pop +
-      no_vehicles_percent_hhlds +
-      one_vehicle_percent_hhlds +
-      food_stamp_percent_hhlds,
-    data=fl_dat,
-    Hess = TRUE
-  )
+# create function that passes model calls with {nnet} multinom
+multinom_model_objs_function <- function(model_call,data) {
+  require(nnet)
+  model_object <- multinom(model_call,data=data, Hess = TRUE)
+  return(model_object)
+}
 
-#converged... cool
-summary(fl_multinom_logit_noPov)
-Anova(fl_multinom_logit_noPov)
-options(tibble.print_max = Inf) 
-broom::tidy(fl_multinom_logit_noPov)
-# Tampa-St.Petes with multinomial logit
-fl_multinom_logit_noPovNoInc <- 
-  multinom(
-    landings_quantile~
-      racial_minority_percent_pop +
-      foreign_born_percent_pop +
-      # poverty_percent_famil +
-      # median_income_dollars_hhlds_percent_scaled +  
-      education_HS_GED_percent_pop +
-      no_vehicles_percent_hhlds +
-      one_vehicle_percent_hhlds +
-      food_stamp_percent_hhlds,
-    data=fl_dat,
-    Hess = TRUE
-  )
 
-#converged... cool
-summary(fl_multinom_logit_noPovNoInc)
+# Tampa Bay St. Pete's models
+fl_multinom_logit_model_objects <- lapply(model_call, function(x) multinom_model_objs_function(x,data=fl_dat) )
 
-# NOLA with multinomial logit
-la_multinom_logit_noPov <- 
-  multinom(
-    landings_quantile~
-      racial_minority_percent_pop +
-      foreign_born_percent_pop +
-      # poverty_percent_famil +
-      median_income_dollars_hhlds_percent_scaled +  
-      education_HS_GED_percent_pop +
-      no_vehicles_percent_hhlds +
-      one_vehicle_percent_hhlds +
-      food_stamp_percent_hhlds,
-    data=la_dat,
-    Hess = TRUE
-  )
-#converged... cool
-summary(la_multinom_logit_noPov)
+lapply(fl_multinom_logit_model_objects,function(x) summary(x))
+unlist(lapply(fl_multinom_logit_model_objects,function(x) AIC(x)))
 
-# NOLA with multinomial logit
-la_multinom_logit_noPov_NoNotMRIP <- 
-  multinom(
-    landings_quantile~
-      racial_minority_percent_pop +
-      foreign_born_percent_pop +
-      # poverty_percent_famil +
-      median_income_dollars_hhlds_percent_scaled +  
-      education_HS_GED_percent_pop +
-      no_vehicles_percent_hhlds +
-      one_vehicle_percent_hhlds +
-      food_stamp_percent_hhlds,
-    data=la_dat[la_dat$landings_quantile!="NotMRIP",],
-    Hess = TRUE
-  )
+# Now New Orleans models
+la_multinom_logit_model_objects <- lapply(model_call, function(x) multinom_model_objs_function(x,data=la_dat) )
 
+lapply(la_multinom_logit_model_objects,function(x) summary(x))
+lapply(la_multinom_logit_model_objects,function(x) x$edf)
 
 # create nice model selection summary tables in r
 # useful guide from Hao Zhu here https://haozhu233.github.io/kableExtra/awesome_table_in_html.html
 # and on formattable here: https://www.displayr.com/formattable/
-library(knitr);library(kableExtra);library(formattable);library(broom)
 
+place <- c(
+    rep("TSP",8),
+    rep("NOLA",8)
+  )
 
 model_AIC <- round(
   c(  
-    AIC(
-      fl_ordered_logit_noPov,
-      fl_ordered_logit_NoPovNoInc,
-      fl_multinom_logit_noPov,
-      fl_multinom_logit_noPovNoInc,
-      la_ordered_logit_noPov,
-      la_multinom_logit_noPov,
-      fl_ordered_logit_noPov_NoNotMRIP,
-      la_ordered_logit_noPov_NoNotMRIP
-    )[[2]]
+    unlist(lapply(fl_multinom_logit_model_objects,function(x) AIC(x))),
+    unlist(lapply(la_multinom_logit_model_objects,function(x) AIC(x)))
   ),
   digits=3
 )
@@ -715,83 +550,41 @@ model_AIC
 
 model_df <- round(
   c(
-    fl_ordered_logit_noPov$edf,
-    fl_ordered_logit_NoPovNoInc$edf,
-    fl_multinom_logit_noPov$edf,
-    fl_multinom_logit_noPovNoInc$edf,
-    la_ordered_logit_noPov$edf,
-    la_multinom_logit_noPov$edf,
-    fl_ordered_logit_noPov_NoNotMRIP$edf,
-    la_ordered_logit_noPov_NoNotMRIP$edf
+    unlist(lapply(fl_multinom_logit_model_objects,function(x) x$edf)),
+    unlist(lapply(la_multinom_logit_model_objects,function(x) x$edf))
   )
 )
 
 model_deviance <- round(
   c(
-    fl_ordered_logit_noPov$deviance,
-    fl_ordered_logit_NoPovNoInc$deviance,
-    fl_multinom_logit_noPov$deviance,
-    fl_multinom_logit_noPovNoInc$deviance,
-    la_ordered_logit_noPov$deviance,
-    la_multinom_logit_noPov$deviance,
-    fl_ordered_logit_noPov_NoNotMRIP$deviance,
-    la_ordered_logit_noPov_NoNotMRIP$deviance
+    unlist(lapply(fl_multinom_logit_model_objects,function(x) x$deviance)),
+    unlist(lapply(la_multinom_logit_model_objects,function(x) x$deviance))
   ),
   digits=3
 )
 model_convergence <- round(
   c(
-  	fl_ordered_logit_noPov$convergence,
-  	fl_ordered_logit_NoPovNoInc$convergence,
-    fl_multinom_logit_noPov$convergence,
-    fl_multinom_logit_noPovNoInc$convergence,
-    la_ordered_logit_noPov$convergence,
-    la_multinom_logit_noPov$convergence,
-    fl_ordered_logit_noPov_NoNotMRIP$convergence,
-    la_ordered_logit_noPov_NoNotMRIP$convergence
+    unlist(lapply(fl_multinom_logit_model_objects,function(x) x$convergence)),
+    unlist(lapply(la_multinom_logit_model_objects,function(x) x$convergence))
   ),
   digits=3
 )
 model_call <- 
-  as.character(c( 
-  	eval(fl_ordered_logit_noPov$call[[2]]),
-  	eval(fl_ordered_logit_NoPovNoInc$call[[2]]),
-    eval(fl_multinom_logit_noPov$call[[2]]),
-    eval(fl_multinom_logit_noPovNoInc$call[[2]]),
-    eval(la_ordered_logit_noPov$call[[2]]),
-    eval(la_multinom_logit_noPov$call[[2]]),
-    eval(fl_ordered_logit_noPov_NoNotMRIP$call[[2]]),
-    eval(la_ordered_logit_noPov_NoNotMRIP$call[[2]])
+  as.character(
+    c( 
+  	  unlist(lapply(fl_multinom_logit_model_objects, function(x) eval( x$call[[2]] ) ) ),
+      unlist(lapply(la_multinom_logit_model_objects, function(x) eval( x$call[[2]] ) ) )
+
   )
 )
-brant_pass <- c(
-		"No",
-		"Yes",
-		"na",
-		"na",
-		"Yes",
-		"na",
-    "Yes,barely",
-    "Yes"
-	)
-model_type <- c(
-		"ordinal logit",
-		"ordinal logit",
-		"multinomial logit",
-		"multinomial logit",
-		"ordinal logit",
-		"multinomial logit",
-    "ordinal logit",
-    "ordinal logit"
-	)
+
+
+
 
 model_outputs <- data.frame(
-  model = 1:8,
+  model = 1:16,
   formula = model_call,
-  type = model_type,
   df = model_df,
-  convergence = model_convergence,
-  brant = brant_pass,
   AIC = model_AIC,
   Deviance = model_deviance
 )

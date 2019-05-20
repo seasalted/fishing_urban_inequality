@@ -28,7 +28,10 @@ library(effects) # for visualizing effects of logits
 library(brant) # for testing parallel regression assumption in ordinal logits
 library(car) #for analyzing results
 library(stargazer) # for viewing tables
+library(summarytools)
 
+
+source("fishing_urban_inequality/urban_fish_functions.R")
 ###### Functions used in this script and sourced from other files
 
 create_dir_fun <- function(outDir,out_suffix=NULL){
@@ -57,7 +60,7 @@ create_dir_fun <- function(outDir,out_suffix=NULL){
 
 
 #Zach setup and filepaths
-script_path <- "/Users/zachkoehn/UW/FoodFishHappy/SESYNC.Grad/scriptdata/scripts"
+script_path <- "/Users/zachkoehn/UW/FoodFishHappy/SESYNC.Grad/scriptdata/fishing_urban_inequality"
 #ARGS 1
 in_dir_metro_zips <- "/Users/zachkoehn/UW/FoodFishHappy/SESYNC.Grad/scriptdata/data/metro_data"
 in_dir_metro_landings <- "/Users/zachkoehn/UW/FoodFishHappy/SESYNC.Grad/scriptdata/data/metro_ZipSiteLanding"
@@ -65,6 +68,10 @@ in_dir_metro <- "/Users/zachkoehn/UW/FoodFishHappy/SESYNC.Grad/scriptdata/data/"
 #ARGS 2
 out_dir <- "/Users/zachkoehn/UW/FoodFishHappy/SESYNC.Grad/scriptdata/outputs"
 
+
+urban_fish_functions_script <- "urban_fish_functions.R"
+
+source(file.path(script_path,urban_fish_functions_script))
 
 ############################################################################
 #####  Parameters and argument set up ###########
@@ -93,6 +100,7 @@ FL_MRIP_filename <- "metro_ZipSiteLanding_FL.csv"
 fish_dat_filename <- "mrip_species_zip_site_2004_2017_012019.csv"
 #SheetNames <- "All_variables.xls"
 ses_dat_full_filename <- "All_variables.xls" 
+
 
 var_names <- c(
   "zcta","state","landings","landings_quantile",
@@ -304,7 +312,7 @@ fish_metro_dat <- cbind(
   ses_metro_landings[,18] # pct hhlds receiving food stamps
 )
 
-head(fish_metro_dat)
+view(dfSummary(fish_metro_dat))
 
 # and name them somethign reasonably informative but short
 
@@ -431,6 +439,17 @@ la_dat <- la_dat[complete.cases(la_dat[,5:12])==TRUE,]
 fl_dat$median_income_dollars_hhlds_percent_scaled <- fl_dat$median_income_dollars_hhlds/max(fl_dat$median_income_dollars_hhlds)
 la_dat$median_income_dollars_hhlds_percent_scaled <- la_dat$median_income_dollars_hhlds/max(la_dat$median_income_dollars_hhlds)
 
+mean(fl_dat$median_income_dollars_hhlds_percent_scaled)+sd(fl_dat$median_income_dollars_hhlds_percent_scaled) +sd(fl_dat$median_income_dollars_hhlds_percent_scaled)
+fl_dat[fl_dat$median_income_dollars_hhlds_percent_scaled>0.70,]
+
+mean(la_dat$median_income_dollars_hhlds_percent_scaled)+sd(fl_dat$median_income_dollars_hhlds_percent_scaled)
+la_dat[la_dat$median_income_dollars_hhlds_percent_scaled>0.70,]
+
+
+view(dfSummary(fl_dat))
+view(dfSummary(la_dat))
+
+
 out_file_fl_data <- paste0("fl_updated_income","_",out_suffix,".csv")
 write.csv(fl_dat,
           "fl_updated_income.csv",row.names=FALSE)
@@ -465,19 +484,30 @@ model_call <- c(
   "landings_quantile ~
       racial_minority_percent_pop +
       foreign_born_percent_pop +
+      median_income_dollars_hhlds +  
+      education_HS_GED_percent_pop +
+      no_vehicles_percent_hhlds +
+      one_vehicle_percent_hhlds +
+      food_stamp_percent_hhlds",
+  "landings_quantile ~
+      racial_minority_percent_pop +
+      foreign_born_percent_pop +
       median_income_dollars_hhlds_percent_scaled +  
       education_HS_GED_percent_pop +
       no_vehicles_percent_hhlds +
       one_vehicle_percent_hhlds +
-      food_stamp_percent_hhlds"
-
+      food_stamp_percent_hhlds",
+  "landings_quantile ~
+      racial_minority_percent_pop +
+    foreign_born_percent_pop +
+    education_HS_GED_percent_pop +
+    no_vehicles_percent_hhlds +
+    one_vehicle_percent_hhlds +
+    food_stamp_percent_hhlds"
 )
 
-polr_model_objs_function <- function(model_call,data) {
-  model_object <- polr(model_call,data=data, Hess = TRUE)
-  return(model_object)
-}
-
+summary(fl_dat)
+summary(la_dat)
 # Tampa Bay St. Pete's models
 fl_ordinal_logit_model_objects <- lapply(model_call, function(x) polr_model_objs_function(x,data=fl_dat) )
 
@@ -509,25 +539,6 @@ as.vector(lapply(la_ordinal_logit_model_objects,function(x) brant(x)))
 # using a multinomial logit over the ordinal 
 #library(nnet)
 
-# create function that passes model calls with {nnet} multinom
-multinom_model_objs_function <- function(model_call,data) {
-  require(nnet)
-  model_object <- multinom(model_call,data=data, Hess = TRUE)
-  return(model_object)
-}
-
-multinom_return_pvalue_function <- function(model_object) {
-  z <- summary(model_object)$coefficients/summary(model_object)$standard.errors
-  # 2-tailed Wald z tests to test significance of coefficients
-  p <- (1 - pnorm(abs(z), 0, 1)) * 2
-  return(p)
-}
-
-
-multinom_return_coefs_function <- function(model_object) {
-  coefs <- summary(model_object)$coefficients
-  return(coefs)
-}
 
 # Tampa Bay St. Pete's models
 fl_multinom_logit_model_objects <- lapply(model_call, function(x) multinom_model_objs_function(x,data=fl_dat) )
@@ -590,8 +601,8 @@ model_call <-
 
 
 
-odds_ratios_florida <- lapply(fl_multinom_logit_model_objects, function(x) exp( coef(x) ) )
-odds_ratios_louisiana <- lapply(la_multinom_logit_model_objects, function(x) exp( coef(x) ) ) 
+odds_ratios_florida <- lapply(fl_multinom_logit_model_objects, function(x) multinom_return_odds_function(x) )
+odds_ratios_louisiana <- lapply(la_multinom_logit_model_objects, function(x) multinom_return_odds_function(x) ) 
 
 coefs_florida <- lapply(fl_multinom_logit_model_objects, function(x) coef(x) ) 
 coefs_louisiana <- lapply(la_multinom_logit_model_objects, function(x) coef(x) ) 
@@ -609,7 +620,6 @@ write.csv( t(as.data.frame(odds_ratios_florida[8])), file=file.path(out_dir,"FL_
 write.csv( t(as.data.frame(coefs_louisiana[8])), file=file.path(out_dir,"LA_multivariate_model_outputs_coefs.csv"), row.names=TRUE)
 write.csv( t(as.data.frame(pvalue_louisiana[8])), file=file.path(out_dir,"LA_multivariate_model_outputs_pvals.csv"), row.names=TRUE)
 write.csv( t(as.data.frame(odds_ratios_louisiana[8])), file=file.path(out_dir,"LA_multivariate_model_outputs_oddsratios.csv"), row.names=TRUE)
-
 
 
 #now write csvs for bivariate model outputs
@@ -701,7 +711,8 @@ plot(effect("food_stamp_percent_hhlds",la_ordered_logit_noPov))
 
 dev.off()
 
-plot(effect("foreign_born_percent_pop",la_ordered_logit_noPov))
+
+plot(effect("foreign_born_percent_pop",fl_multinom_logit_model_objects))
 
 Anova(fl_ordered_logit_NoPovNoInc,type="III")
 pdf("plots/diagnosticPlots/TB_ordinal_logit_effects.pdf")
